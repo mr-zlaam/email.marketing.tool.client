@@ -114,6 +114,16 @@ class ApiClient {
     return this.request(`/users?page=${page}&limit=${limit}`);
   }
 
+  async getAllUsers(page = 1, limit = 10) {
+    return this.request(`/user/getAllUser?page=${page}&limit=${limit}`);
+  }
+
+  async deleteUser(userId: string) {
+    return this.request(`/user/deleteUser/${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
   async getUserProfile() {
     return this.request('/users/profile');
   }

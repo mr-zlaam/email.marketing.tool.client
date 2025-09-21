@@ -29,9 +29,10 @@ import {
 
 interface EmailSidebarProps extends React.ComponentProps<typeof Sidebar> {
   onNavigate: (view: string) => void;
+  currentView?: string;
 }
 
-export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
+export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebarProps) {
   const { user, isAdmin, logout } = useAuth()
 
   // Main navigation items based on user role
@@ -41,13 +42,15 @@ export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
         title: "Dashboard",
         url: "#",
         icon: IconDashboard,
-        onClick: () => onNavigate('dashboard')
+        onClick: () => onNavigate('dashboard'),
+        view: 'dashboard'
       },
       {
         title: "Campaigns",
         url: "#",
         icon: IconMail,
-        onClick: () => onNavigate('emailComposer')
+        onClick: () => onNavigate('emailComposer'),
+        view: 'emailComposer'
       },
       {
         title: "Subscribers",
@@ -55,7 +58,8 @@ export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
         icon: IconUsers,
         onClick: () => onNavigate('subscribers'),
         disabled: true,
-        badge: "Soon"
+        badge: "Soon",
+        view: 'subscribers'
       },
     ]
 
@@ -65,7 +69,16 @@ export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
         title: "Create User",
         url: "#",
         icon: IconUserPlus,
-        onClick: () => onNavigate('createUser')
+        onClick: () => onNavigate('createUser'),
+        view: 'createUser'
+      })
+
+      baseItems.splice(2, 0, {
+        title: "Manage Users",
+        url: "#",
+        icon: IconUsers,
+        onClick: () => onNavigate('userManagement'),
+        view: 'userManagement'
       })
 
       baseItems.push({
@@ -73,7 +86,8 @@ export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
         url: "#",
         icon: IconChartBar,
         onClick: () => onNavigate('analytics'),
-        badge: "Admin"
+        badge: "Admin",
+        view: 'analytics'
       })
     }
 
@@ -150,7 +164,7 @@ export function EmailSidebar({ onNavigate, ...props }: EmailSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
-        <EmailNavMain items={getNavMain()} />
+        <EmailNavMain items={getNavMain()} currentView={currentView} />
         <NavSharedFeatures items={navSharedFeatures} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>

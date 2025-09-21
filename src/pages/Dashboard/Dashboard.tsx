@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { EmailSidebar } from '@/components/email-sidebar';
 import { EmailSiteHeader } from '@/components/email-site-header';
 import { CreateUser } from '@/pages/CreateUser/CreateUser';
+import { UserManagement } from '@/pages/UserManagement/UserManagement';
 import { Analytics } from '@/pages/Analytics/Analytics';
 import { EmailComposer } from '@/pages/EmailComposer/EmailComposer';
 import {
@@ -25,11 +26,30 @@ export const Dashboard = () => {
           "--header-height": "60px",
         } as React.CSSProperties}
       >
-        <EmailSidebar onNavigate={handleNavigate} variant="inset" />
+        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
         <SidebarInset>
           <EmailSiteHeader title="Create User" />
           <div className="flex flex-1 flex-col p-6">
             <CreateUser onBack={() => handleNavigate('dashboard')} />
+          </div>
+        </SidebarInset>
+      </SidebarProvider>
+    );
+  }
+
+  if (currentView === 'userManagement') {
+    return (
+      <SidebarProvider
+        style={{
+          "--sidebar-width": "280px",
+          "--header-height": "60px",
+        } as React.CSSProperties}
+      >
+        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
+        <SidebarInset>
+          <EmailSiteHeader title="User Management" />
+          <div className="flex flex-1 flex-col">
+            <UserManagement onBack={() => handleNavigate('dashboard')} />
           </div>
         </SidebarInset>
       </SidebarProvider>
@@ -44,7 +64,7 @@ export const Dashboard = () => {
           "--header-height": "60px",
         } as React.CSSProperties}
       >
-        <EmailSidebar onNavigate={handleNavigate} variant="inset" />
+        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
         <SidebarInset>
           <EmailSiteHeader title="Analytics" />
           <div className="flex flex-1 flex-col p-6">
@@ -63,7 +83,7 @@ export const Dashboard = () => {
           "--header-height": "60px",
         } as React.CSSProperties}
       >
-        <EmailSidebar onNavigate={handleNavigate} variant="inset" />
+        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
         <SidebarInset>
           <EmailSiteHeader title="Email Composer" />
           <div className="flex flex-1 flex-col">
