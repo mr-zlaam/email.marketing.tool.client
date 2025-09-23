@@ -1,13 +1,15 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public data: unknown,
-    message?: string
-  ) {
+  public status: number;
+  public data: unknown;
+
+  constructor(status: number, data: unknown, message?: string) {
     super(message || `API Error: ${status}`);
-    this.name = 'ApiError';
+    this.name = "ApiError";
+    this.status = status;
+    this.data = data;
   }
 }
 
@@ -19,7 +21,7 @@ class ApiClient {
   }
 
   private getAuthToken(): string | null {
-    return localStorage.getItem('accessToken');
+    return localStorage.getItem("accessToken");
   }
 
   private async request<T>(
@@ -29,9 +31,9 @@ class ApiClient {
     const url = `${this.baseURL}${endpoint}`;
     const token = this.getAuthToken();
 
-    const headers: HeadersInit = {
-      'Content-Type': 'application/json',
-      ...options.headers,
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      ...(options.headers as Record<string, string>),
     };
 
     if (token) {
@@ -53,11 +55,15 @@ class ApiClient {
         } catch {
           errorData = { message: response.statusText };
         }
-        throw new ApiError(response.status, errorData, errorData.message);
+        throw new ApiError(
+          response.status,
+          errorData,
+          (errorData as { message?: string })?.message
+        );
       }
 
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
         return await response.json();
       }
 
@@ -66,14 +72,17 @@ class ApiClient {
       if (error instanceof ApiError) {
         throw error;
       }
-      throw new Error('Network error occurred');
+      throw new Error("Network error occurred");
     }
   }
 
   // Authentication
-  async login(email: string, password: string) {
-    return this.request('/auth/login', {
-      method: 'POST',
+  async login(
+    email: string,
+    password: string
+  ): Promise<{ accessToken: string; user: unknown }> {
+    return this.request("/auth/login", {
+      method: "POST",
       body: JSON.stringify({ email, password }),
     });
   }
@@ -84,9 +93,9 @@ class ApiClient {
     email: string;
     password: string;
     role: string;
-  }) {
-    return this.request('/auth/register', {
-      method: 'POST',
+  }): Promise<{ accessToken: string; user: unknown }> {
+    return this.request("/auth/register", {
+      method: "POST",
       body: JSON.stringify(userData),
     });
   }
@@ -98,9 +107,9 @@ class ApiClient {
     email: string;
     password: string;
     role?: string;
-  }) {
-    return this.request('/user/adminCreatesTheUser', {
-      method: 'POST',
+  }): Promise<{ user: unknown }> {
+    return this.request("/user/adminCreatesTheUser", {
+      method: "POST",
       body: JSON.stringify({
         username: userData.username,
         fullName: userData.fullName,
@@ -110,38 +119,47 @@ class ApiClient {
     });
   }
 
-  async getUsers(page = 1, limit = 10) {
+  async getUsers(
+    page = 1,
+    limit = 10
+  ): Promise<{ users: unknown[]; pagination: unknown }> {
     return this.request(`/users?page=${page}&limit=${limit}`);
   }
 
-  async getAllUsers(page = 1, limit = 10) {
+  async getAllUsers(
+    page = 1,
+    limit = 10
+  ): Promise<{ users: unknown[]; pagination: unknown }> {
     return this.request(`/user/getAllUser?page=${page}&limit=${limit}`);
   }
 
-  async deleteUser(userId: string) {
+  async deleteUser(userId: string): Promise<{ message: string }> {
     return this.request(`/user/deleteUser/${userId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     });
   }
 
-  async getUserProfile() {
-    return this.request('/users/profile');
+  async getUserProfile(): Promise<unknown> {
+    return this.request("/users/profile");
   }
 
   // Email Batch Management
-  async createEmailBatch(formData: FormData) {
+  async createEmailBatch(formData: FormData): Promise<unknown> {
     const token = this.getAuthToken();
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
 
     if (token) {
       headers.Authorization = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${this.baseURL}/email-batch`, {
-      method: 'POST',
-      headers,
-      body: formData, // Don't set Content-Type for FormData
-    });
+    const response = await fetch(
+      `${this.baseURL}/emailBatch/createEmailBatch`,
+      {
+        method: "POST",
+        headers,
+        body: formData, // Don't set Content-Type for FormData
+      }
+    );
 
     if (!response.ok) {
       let errorData;
@@ -150,38 +168,50 @@ class ApiClient {
       } catch {
         errorData = { message: response.statusText };
       }
-      throw new ApiError(response.status, errorData, errorData.message);
+      throw new ApiError(
+        response.status,
+        errorData,
+        (errorData as { message?: string })?.message
+      );
     }
 
     return response.json();
   }
 
-  async getEmailBatches(page = 1, limit = 10) {
-    return this.request(`/email-batch?page=${page}&limit=${limit}`);
+  async getEmailBatches(
+    page = 1,
+    limit = 10
+  ): Promise<{ batches: unknown[]; pagination: unknown }> {
+    return this.request(
+      `/emailBatch/createEmailBatch?page=${page}&limit=${limit}`
+    );
   }
 
-  async getEmailBatch(id: string) {
-    return this.request(`/email-batch/${id}`);
+  async getEmailBatch(id: string): Promise<unknown> {
+    return this.request(`/emailBatch/createEmailBatch/${id}`);
   }
 
-  async updateEmailBatchStatus(id: string, status: string) {
-    return this.request(`/email-batch/${id}/status`, {
-      method: 'PATCH',
+  async updateEmailBatchStatus(id: string, status: string): Promise<unknown> {
+    return this.request(`/emailBatch/createEmailBatch/${id}/status`, {
+      method: "PATCH",
       body: JSON.stringify({ status }),
     });
   }
 
   // Analytics
-  async getAnalytics(dateRange?: { from: string; to: string }) {
+  async getAnalytics(dateRange?: {
+    from: string;
+    to: string;
+  }): Promise<unknown> {
     const params = new URLSearchParams();
     if (dateRange) {
-      params.append('from', dateRange.from);
-      params.append('to', dateRange.to);
+      params.append("from", dateRange.from);
+      params.append("to", dateRange.to);
     }
     return this.request(`/analytics?${params.toString()}`);
   }
 
-  async getCampaignStats(campaignId: string) {
+  async getCampaignStats(campaignId: string): Promise<unknown> {
     return this.request(`/analytics/campaign/${campaignId}`);
   }
 }
@@ -197,9 +227,11 @@ export const withErrorHandling = async <T>(
     const data = await apiCall();
     return { data, error: null };
   } catch (error) {
-    const errorMessage = error instanceof ApiError
-      ? error.data?.message || error.message
-      : 'An unexpected error occurred';
+    console.info(error);
+    const errorMessage =
+      error instanceof ApiError
+        ? (error.data as { message?: string })?.message || error.message
+        : "An unexpected error occurred";
 
     onError?.(error as ApiError);
     return { data: null, error: errorMessage };

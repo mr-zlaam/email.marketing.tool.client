@@ -1,16 +1,28 @@
-import { useState } from 'react';
-import { toast } from 'sonner';
-import { apiClient } from '@/lib/api';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { RichTextEditor } from '@/components/RichTextEditor';
-import { FileUpload } from '@/components/FileUpload';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useState } from "react";
+import { toast } from "sonner";
+import { apiClient } from "@/lib/api";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { FileUpload } from "@/components/FileUpload";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   IconMail,
   IconClock,
@@ -18,16 +30,16 @@ import {
   IconFileText,
   IconSend,
   IconArrowLeft,
-} from '@tabler/icons-react';
+} from "@tabler/icons-react";
 
 const emailBatchSchema = z.object({
-  batchName: z.string().min(1, 'Batch name is required'),
-  subject: z.string().min(1, 'Subject is required'),
-  scheduleTime: z.enum(['NOW', 'SCHEDULED']),
+  batchName: z.string().min(1, "Batch name is required"),
+  subject: z.string().min(1, "Subject is required"),
+  scheduleTime: z.enum(["NOW", "SCHEDULED"]),
   scheduledDate: z.string().optional(),
   scheduledTime: z.string().optional(),
-  delayBetweenEmails: z.string().min(1, 'Delay is required'),
-  emailsPerBatch: z.string().min(1, 'Emails per batch is required'),
+  delayBetweenEmails: z.string().min(1, "Delay is required"),
+  emailsPerBatch: z.string().min(1, "Emails per batch is required"),
 });
 
 type EmailBatchFormData = z.infer<typeof emailBatchSchema>;
@@ -37,7 +49,7 @@ interface EmailComposerProps {
 }
 
 export const EmailComposer = ({ onBack }: EmailComposerProps) => {
-  const [emailContent, setEmailContent] = useState('');
+  const [emailContent, setEmailContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -52,13 +64,13 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
   } = useForm<EmailBatchFormData>({
     resolver: zodResolver(emailBatchSchema),
     defaultValues: {
-      scheduleTime: 'NOW',
-      delayBetweenEmails: '5',
-      emailsPerBatch: '50',
+      scheduleTime: "NOW",
+      delayBetweenEmails: "5",
+      emailsPerBatch: "50",
     },
   });
 
-  const scheduleTime = watch('scheduleTime');
+  const scheduleTime = watch("scheduleTime");
 
   const handleFileSelect = (file: File | null) => {
     setSelectedFile(file);
@@ -67,12 +79,12 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
 
   const onSubmit = async (data: EmailBatchFormData) => {
     if (!selectedFile) {
-      setSubmitError('Please select a CSV or Excel file with email addresses');
+      setSubmitError("Please select a CSV or Excel file with email addresses");
       return;
     }
 
     if (!emailContent.trim()) {
-      setSubmitError('Please write your email content');
+      setSubmitError("Please write your email content");
       return;
     }
 
@@ -82,38 +94,51 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
 
     try {
       const formData = new FormData();
-      formData.append('file', selectedFile);
-      formData.append('batchName', data.batchName);
-      formData.append('composedEmail', emailContent); // Updated to match backend
-      formData.append('delayBetweenEmails', data.delayBetweenEmails);
-      formData.append('emailsPerBatch', data.emailsPerBatch);
+      formData.append("file", selectedFile);
+      formData.append("batchName", data.batchName);
+      formData.append("composedEmail", emailContent); // Updated to match backend
+      formData.append("delayBetweenEmails", data.delayBetweenEmails);
+      formData.append("emailsPerBatch", data.emailsPerBatch);
+      formData.append("subject", data.subject);
 
       // Handle schedule time
-      if (data.scheduleTime === 'SCHEDULED' && data.scheduledDate && data.scheduledTime) {
-        const scheduledDateTime = new Date(`${data.scheduledDate}T${data.scheduledTime}`);
-        formData.append('scheduleTime', scheduledDateTime.toISOString());
+      if (
+        data.scheduleTime === "SCHEDULED" &&
+        data.scheduledDate &&
+        data.scheduledTime
+      ) {
+        const scheduledDateTime = new Date(
+          `${data.scheduledDate}T${data.scheduledTime}`
+        );
+        formData.append("scheduleTime", scheduledDateTime.toISOString());
       } else {
-        formData.append('scheduleTime', 'NOW');
+        formData.append("scheduleTime", "NOW");
       }
 
       const result = await apiClient.createEmailBatch(formData);
-      const successMessage = `Email batch "${data.batchName}" created successfully! ${result.totalEmails || 0} emails queued.`;
+      const successMessage = `Email batch "${
+        data.batchName
+      }" created successfully! ${
+        (result as { totalEmails: number }).totalEmails || 0
+      } emails queued.`;
       setSubmitSuccess(successMessage);
       toast.success(successMessage);
 
       // Reset form
       setSelectedFile(null);
-      setEmailContent('');
-      setValue('batchName', '');
-      setValue('subject', '');
-      setValue('scheduleTime', 'NOW');
-      setValue('delayBetweenEmails', '5');
-      setValue('emailsPerBatch', '50');
+      setEmailContent("");
+      setValue("batchName", "");
+      setValue("subject", "");
+      setValue("scheduleTime", "NOW");
+      setValue("delayBetweenEmails", "5");
+      setValue("emailsPerBatch", "50");
     } catch (error: unknown) {
-      const errorMessage = (error as { message?: string })?.message || 'Failed to create email batch. Please try again.';
+      const errorMessage =
+        (error as { message?: string })?.message ||
+        "Failed to create email batch. Please try again.";
       setSubmitError(errorMessage);
       toast.error(errorMessage);
-      console.error('Email batch creation error:', error);
+      console.error("Email batch creation error:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -138,8 +163,12 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
               <IconMail className="w-6 h-6 text-white" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Email Composer</h1>
-              <p className="text-gray-600">Create and schedule email campaigns</p>
+              <h1 className="text-3xl font-bold text-gray-900">
+                Email Composer
+              </h1>
+              <p className="text-gray-600">
+                Create and schedule email campaigns
+              </p>
             </div>
           </div>
         </div>
@@ -165,11 +194,13 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                     <Input
                       id="subject"
                       placeholder="Enter email subject"
-                      {...register('subject')}
+                      {...register("subject")}
                       className="mt-1"
                     />
                     {errors.subject && (
-                      <p className="mt-1 text-sm text-red-500">{errors.subject.message}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.subject.message}
+                      </p>
                     )}
                   </div>
 
@@ -201,8 +232,8 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                   <FileUpload
                     onFileSelect={handleFileSelect}
                     selectedFile={selectedFile}
-                    acceptedTypes={['.csv', '.xlsx', '.xls']}
-                    acceptedTypeNames={['CSV', 'Excel']}
+                    acceptedTypes={[".csv", ".xlsx", ".xls"]}
+                    acceptedTypeNames={["CSV", "Excel"]}
                     maxSizeInMB={10}
                     disabled={isSubmitting}
                   />
@@ -226,11 +257,13 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                     <Input
                       id="batchName"
                       placeholder="e.g. Newsletter Nov 2024"
-                      {...register('batchName')}
+                      {...register("batchName")}
                       className="mt-1"
                     />
                     {errors.batchName && (
-                      <p className="mt-1 text-sm text-red-500">{errors.batchName.message}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.batchName.message}
+                      </p>
                     )}
                   </div>
 
@@ -241,26 +274,32 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                       type="number"
                       min="1"
                       max="1000"
-                      {...register('emailsPerBatch')}
+                      {...register("emailsPerBatch")}
                       className="mt-1"
                     />
                     {errors.emailsPerBatch && (
-                      <p className="mt-1 text-sm text-red-500">{errors.emailsPerBatch.message}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.emailsPerBatch.message}
+                      </p>
                     )}
                   </div>
 
                   <div>
-                    <Label htmlFor="delayBetweenEmails">Delay Between Emails (seconds)</Label>
+                    <Label htmlFor="delayBetweenEmails">
+                      Delay Between Emails (seconds)
+                    </Label>
                     <Input
                       id="delayBetweenEmails"
                       type="number"
                       min="1"
                       max="3600"
-                      {...register('delayBetweenEmails')}
+                      {...register("delayBetweenEmails")}
                       className="mt-1"
                     />
                     {errors.delayBetweenEmails && (
-                      <p className="mt-1 text-sm text-red-500">{errors.delayBetweenEmails.message}</p>
+                      <p className="mt-1 text-sm text-red-500">
+                        {errors.delayBetweenEmails.message}
+                      </p>
                     )}
                   </div>
                 </CardContent>
@@ -273,34 +312,39 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                     <IconClock className="w-5 h-5" />
                     Schedule
                   </CardTitle>
-                  <CardDescription>
-                    When to send the emails
-                  </CardDescription>
+                  <CardDescription>When to send the emails</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
                     <Label>Send Time</Label>
-                    <Select value={scheduleTime} onValueChange={(value) => setValue('scheduleTime', value as 'NOW' | 'SCHEDULED')}>
+                    <Select
+                      value={scheduleTime}
+                      onValueChange={(value) =>
+                        setValue("scheduleTime", value as "NOW" | "SCHEDULED")
+                      }
+                    >
                       <SelectTrigger className="mt-1">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="NOW">Send Now</SelectItem>
-                        <SelectItem value="SCHEDULED">Schedule for Later</SelectItem>
+                        <SelectItem value="SCHEDULED">
+                          Schedule for Later
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  {scheduleTime === 'SCHEDULED' && (
+                  {scheduleTime === "SCHEDULED" && (
                     <>
                       <div>
                         <Label htmlFor="scheduledDate">Date</Label>
                         <Input
                           id="scheduledDate"
                           type="date"
-                          {...register('scheduledDate')}
+                          {...register("scheduledDate")}
                           className="mt-1"
-                          min={new Date().toISOString().split('T')[0]}
+                          min={new Date().toISOString().split("T")[0]}
                         />
                       </div>
                       <div>
@@ -308,7 +352,7 @@ export const EmailComposer = ({ onBack }: EmailComposerProps) => {
                         <Input
                           id="scheduledTime"
                           type="time"
-                          {...register('scheduledTime')}
+                          {...register("scheduledTime")}
                           className="mt-1"
                         />
                       </div>
