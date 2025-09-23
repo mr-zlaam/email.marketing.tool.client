@@ -86,6 +86,7 @@ export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebar
         url: "#",
         icon: IconChartBar,
         onClick: () => onNavigate('analytics'),
+        disabled: false,
         badge: "Admin",
         view: 'analytics'
       })

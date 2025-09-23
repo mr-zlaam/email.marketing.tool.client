@@ -37,6 +37,18 @@ interface User {
   updatedAt: string;
 }
 
+interface Pagination {
+  totalPage?: number;
+  hasNextPage?: boolean;
+  hasPreviousPage?: boolean;
+  totalRecord?: number;
+}
+
+interface UsersResponse {
+  users: User[];
+  pagination: Pagination;
+}
+
 interface UserManagementProps {
   onBack: () => void;
 }
@@ -75,8 +87,8 @@ export const UserManagement = ({ onBack }: UserManagementProps) => {
     }
   };
 
-  const users: User[] = usersData?.data?.data || [];
-  const pagination = usersData?.data?.pagination || {};
+  const users: User[] = (usersData as UsersResponse)?.users || [];
+  const pagination: Pagination = (usersData as UsersResponse)?.pagination || {};
 
   const filteredUsers = users.filter(user =>
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
