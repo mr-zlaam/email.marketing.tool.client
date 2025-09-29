@@ -1,19 +1,17 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UserPlus, ArrowLeft } from 'lucide-react';
 import { apiClient } from '@/lib/api';
 import { createUserSchema, type CreateUserFormData } from '@/schemas/validation.schemas';
 
-interface CreateUserProps {
-  onBack: () => void;
-}
-
-export const CreateUser = ({ onBack }: CreateUserProps) => {
+export const CreateUser = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
   const queryClient = useQueryClient();
@@ -56,17 +54,19 @@ export const CreateUser = ({ onBack }: CreateUserProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="mb-4 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+    <Layout title="Create User">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-2xl mx-auto px-4 py-8">
+          <div className="mb-8">
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className="mb-4 text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
 
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl flex items-center justify-center">
@@ -193,7 +193,8 @@ export const CreateUser = ({ onBack }: CreateUserProps) => {
             </div>
           </form>
         </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };

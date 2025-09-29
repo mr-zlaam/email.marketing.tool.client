@@ -1,23 +1,23 @@
+import { Link } from 'react-router-dom';
 import { ArrowLeft, BarChart3, TrendingUp, Users, Mail, Eye, MousePointer } from 'lucide-react';
+import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 
-interface AnalyticsProps {
-  onBack: () => void;
-}
-
-export const Analytics = ({ onBack }: AnalyticsProps) => {
+export const Analytics = () => {
   return (
-    <div className="min-h-screen bg-white">
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <div className="mb-8">
-          <Button
-            variant="ghost"
-            onClick={onBack}
-            className="mb-4 text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Dashboard
-          </Button>
+    <Layout title="Analytics">
+      <div className="min-h-screen bg-white">
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="mb-8">
+            <Link to="/">
+              <Button
+                variant="ghost"
+                className="mb-4 text-gray-600 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
 
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 bg-gradient-to-br from-amber-600 to-amber-800 rounded-xl flex items-center justify-center">
@@ -219,7 +219,8 @@ export const Analytics = ({ onBack }: AnalyticsProps) => {
             </div>
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </Layout>
   );
 };

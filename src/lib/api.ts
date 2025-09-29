@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1";
 
 export class ApiError extends Error {
   public status: number;
@@ -92,9 +92,8 @@ class ApiClient {
     fullName: string;
     email: string;
     password: string;
-    role: string;
   }): Promise<{ accessToken: string; user: unknown }> {
-    return this.request("/auth/register", {
+    return this.request("/user/registerUser", {
       method: "POST",
       body: JSON.stringify(userData),
     });
@@ -106,41 +105,21 @@ class ApiClient {
     fullName: string;
     email: string;
     password: string;
-    role?: string;
   }): Promise<{ user: unknown }> {
     return this.request("/user/adminCreatesTheUser", {
       method: "POST",
-      body: JSON.stringify({
-        username: userData.username,
-        fullName: userData.fullName,
-        email: userData.email,
-        password: userData.password,
-      }),
+      body: JSON.stringify(userData),
     });
   }
 
-  async getUsers(
-    page = 1,
-    limit = 10
-  ): Promise<{ users: unknown[]; pagination: unknown }> {
-    return this.request(`/users?page=${page}&limit=${limit}`);
-  }
-
-  async getAllUsers(
-    page = 1,
-    limit = 10
-  ): Promise<{ users: unknown[]; pagination: unknown }> {
-    return this.request(`/user/getAllUser?page=${page}&limit=${limit}`);
+  async getAllUsers(): Promise<{ users: unknown[]; pagination: unknown }> {
+    return this.request(`/user/getAllUser`);
   }
 
   async deleteUser(userId: string): Promise<{ message: string }> {
     return this.request(`/user/deleteUser/${userId}`, {
       method: "DELETE",
     });
-  }
-
-  async getUserProfile(): Promise<unknown> {
-    return this.request("/users/profile");
   }
 
   // Email Batch Management
@@ -178,27 +157,45 @@ class ApiClient {
     return response.json();
   }
 
-  async getEmailBatches(
+  async getUploadsWithBatches(
     page = 1,
-    limit = 10
-  ): Promise<{ batches: unknown[]; pagination: unknown }> {
-    return this.request(
-      `/emailBatch/createEmailBatch?page=${page}&limit=${limit}`
-    );
+    pageSize = 10
+  ): Promise<unknown> {
+    return this.request(`/emailBatch/getUploadsWithBatches?page=${page}&pageSize=${pageSize}`);
   }
 
-  async getEmailBatch(id: string): Promise<unknown> {
-    return this.request(`/emailBatch/createEmailBatch/${id}`);
+  async getUploadWithBatches(uploadId: number): Promise<unknown> {
+    return this.request(`/emailBatch/getUploadsWithBatches?uploadId=${uploadId}`);
   }
 
-  async updateEmailBatchStatus(id: string, status: string): Promise<unknown> {
-    return this.request(`/emailBatch/createEmailBatch/${id}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ status }),
+  async createEmailBatchFromExistingUpload(data: {
+    uploadId: number;
+    batchName: string;
+    subject: string;
+    composedEmail: string;
+    delayBetweenEmails: string;
+    emailsPerBatch: string;
+    scheduleTime: string;
+  }): Promise<unknown> {
+    return this.request("/emailBatch/createEmailBatch", {
+      method: "POST",
+      body: JSON.stringify(data),
     });
   }
 
-  // Analytics
+  async pauseBatch(batchId: string): Promise<{ message: string }> {
+    return this.request(`/emailBatch/pauseBatch/${batchId}`, {
+      method: "PATCH",
+    });
+  }
+
+  async resumeBatch(batchId: string): Promise<{ message: string }> {
+    return this.request(`/emailBatch/resumeBatch/${batchId}`, {
+      method: "PATCH",
+    });
+  }
+
+  // Analytics (placeholder for future implementation)
   async getAnalytics(dateRange?: {
     from: string;
     to: string;

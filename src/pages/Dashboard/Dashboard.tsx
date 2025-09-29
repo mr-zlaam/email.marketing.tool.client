@@ -1,110 +1,12 @@
-import { useState } from 'react';
-import { EmailSidebar } from '@/components/email-sidebar';
-import { EmailSiteHeader } from '@/components/email-site-header';
-import { CreateUser } from '@/pages/CreateUser/CreateUser';
-import { UserManagement } from '@/pages/UserManagement/UserManagement';
-import { Analytics } from '@/pages/Analytics/Analytics';
-import { EmailComposer } from '@/pages/EmailComposer/EmailComposer';
-import {
-  SidebarInset,
-  SidebarProvider,
-} from '@/components/ui/sidebar';
+import { Link } from 'react-router-dom';
+import { Layout } from '@/components/Layout';
+import { CampaignList } from './CampaignList';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 export const Dashboard = () => {
-  const [currentView, setCurrentView] = useState<string>('dashboard');
-
-  const handleNavigate = (view: string) => {
-    setCurrentView(view);
-  };
-
-  if (currentView === 'createUser') {
-    return (
-      <SidebarProvider
-        style={{
-          "--sidebar-width": "280px",
-          "--header-height": "60px",
-        } as React.CSSProperties}
-      >
-        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
-        <SidebarInset>
-          <EmailSiteHeader title="Create User" />
-          <div className="flex flex-1 flex-col p-6">
-            <CreateUser onBack={() => handleNavigate('dashboard')} />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  if (currentView === 'userManagement') {
-    return (
-      <SidebarProvider
-        style={{
-          "--sidebar-width": "280px",
-          "--header-height": "60px",
-        } as React.CSSProperties}
-      >
-        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
-        <SidebarInset>
-          <EmailSiteHeader title="User Management" />
-          <div className="flex flex-1 flex-col">
-            <UserManagement onBack={() => handleNavigate('dashboard')} />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  if (currentView === 'analytics') {
-    return (
-      <SidebarProvider
-        style={{
-          "--sidebar-width": "280px",
-          "--header-height": "60px",
-        } as React.CSSProperties}
-      >
-        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
-        <SidebarInset>
-          <EmailSiteHeader title="Analytics" />
-          <div className="flex flex-1 flex-col p-6">
-            <Analytics onBack={() => handleNavigate('dashboard')} />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
-  if (currentView === 'emailComposer') {
-    return (
-      <SidebarProvider
-        style={{
-          "--sidebar-width": "280px",
-          "--header-height": "60px",
-        } as React.CSSProperties}
-      >
-        <EmailSidebar onNavigate={handleNavigate} currentView={currentView} variant="inset" />
-        <SidebarInset>
-          <EmailSiteHeader title="Email Composer" />
-          <div className="flex flex-1 flex-col">
-            <EmailComposer onBack={() => handleNavigate('dashboard')} />
-          </div>
-        </SidebarInset>
-      </SidebarProvider>
-    );
-  }
-
   return (
-    <SidebarProvider
-      style={{
-        "--sidebar-width": "280px",
-        "--header-height": "60px",
-      } as React.CSSProperties}
-    >
-      <EmailSidebar onNavigate={handleNavigate} variant="inset" />
-      <SidebarInset>
-        <EmailSiteHeader title="Dashboard" />
-        <div className="flex flex-1 flex-col p-6 space-y-6">
+    <Layout title="Dashboard">
+      <div className="flex flex-1 flex-col p-6 space-y-6">
           {/* Stats Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
@@ -155,43 +57,7 @@ export const Dashboard = () => {
           {/* Main Content */}
           <div className="grid gap-6 md:grid-cols-2">
             {/* Recent Campaigns */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Recent Campaigns</CardTitle>
-                <CardDescription>Your latest email marketing campaigns</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Welcome Series</p>
-                    <p className="text-xs text-muted-foreground">Sent 2 days ago</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Delivered</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Product Launch</p>
-                    <p className="text-xs text-muted-foreground">Sent 1 week ago</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">Delivered</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">Monthly Newsletter</p>
-                    <p className="text-xs text-muted-foreground">Scheduled for tomorrow</p>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full">Scheduled</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <CampaignList />
 
             {/* Quick Actions */}
             <Card>
@@ -201,20 +67,19 @@ export const Dashboard = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="grid gap-3">
-                  <div
-                    onClick={() => handleNavigate('emailComposer')}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center">
-                        <span className="text-blue-600 text-sm font-medium">📧</span>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium">Create Campaign</p>
-                        <p className="text-xs text-muted-foreground">Compose and send emails</p>
+                  <Link to="/create-campaign">
+                    <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer transition-colors">
+                      <div className="flex items-center space-x-3">
+                        <div className="h-8 w-8 rounded bg-blue-100 flex items-center justify-center">
+                          <span className="text-blue-600 text-sm font-medium">📧</span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Create Campaign</p>
+                          <p className="text-xs text-muted-foreground">Compose and send emails</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   <div className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-not-allowed opacity-60">
                     <div className="flex items-center space-x-3">
@@ -288,8 +153,7 @@ export const Dashboard = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
+      </div>
+    </Layout>
   );
 };

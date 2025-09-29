@@ -103,9 +103,14 @@ export const RichTextEditor = ({
     title?: string
   }) => (
     <Button
+      type="button"
       variant={isActive ? "default" : "ghost"}
       size="sm"
-      onClick={onClick}
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        onClick();
+      }}
       disabled={disabled}
       className="h-8 w-8 p-0"
       title={title}
@@ -129,7 +134,7 @@ export const RichTextEditor = ({
   if (!editable) {
     return (
       <div className="border rounded-lg p-4 bg-gray-50">
-        <div className="prose prose-gray max-w-none">
+        <div className="rich-text-editor">
           <EditorContent editor={editor} />
         </div>
       </div>
@@ -301,13 +306,25 @@ export const RichTextEditor = ({
               }
             }}
           />
-          <Button onClick={handleAddLink} size="sm" disabled={!linkUrl.trim()}>
+          <Button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddLink();
+            }}
+            size="sm"
+            disabled={!linkUrl.trim()}
+          >
             Add Link
           </Button>
           <Button
-            onClick={() => {
-              setShowLinkInput(false)
-              setLinkUrl('')
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowLinkInput(false);
+              setLinkUrl('');
             }}
             variant="ghost"
             size="sm"
@@ -318,11 +335,8 @@ export const RichTextEditor = ({
       )}
 
       {/* Editor Content */}
-      <div className="min-h-[400px]">
-        <EditorContent
-          editor={editor}
-          className="prose prose-gray prose-lg max-w-none [&_.ProseMirror]:outline-none [&_.ProseMirror]:min-h-[400px] [&_.ProseMirror]:p-4"
-        />
+      <div className="min-h-[400px] rich-text-editor">
+        <EditorContent editor={editor} />
       </div>
     </div>
   )

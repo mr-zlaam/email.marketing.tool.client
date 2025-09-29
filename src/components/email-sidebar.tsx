@@ -1,4 +1,5 @@
-import * as React from "react"
+import * as React from "react";
+import { Link, useLocation } from "react-router-dom";
 import {
   IconMail,
   IconChartBar,
@@ -11,12 +12,12 @@ import {
   IconFileText,
   IconMessage,
   type Icon,
-} from "@tabler/icons-react"
+} from "@tabler/icons-react";
 
-import { useAuth } from "@/context/AuthContext"
-import { EmailNavMain } from "@/components/email-nav-main"
-import { NavSecondary } from "@/components/nav-secondary"
-import { EmailNavUser } from "@/components/email-nav-user"
+import { useAuth } from "@/context/AuthContext";
+import { EmailNavMain } from "@/components/email-nav-main";
+import { NavSecondary } from "@/components/nav-secondary";
+import { EmailNavUser } from "@/components/email-nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -25,75 +26,73 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/components/ui/sidebar";
 
-interface EmailSidebarProps extends React.ComponentProps<typeof Sidebar> {
-  onNavigate: (view: string) => void;
-  currentView?: string;
-}
+type EmailSidebarProps = React.ComponentProps<typeof Sidebar>;
 
-export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebarProps) {
-  const { user, isAdmin, logout } = useAuth()
+export function EmailSidebar(props: EmailSidebarProps) {
+  const { user, isAdmin, logout } = useAuth();
+  const location = useLocation();
 
   // Main navigation items based on user role
   const getNavMain = () => {
     const baseItems = [
       {
         title: "Dashboard",
-        url: "#",
+        url: "/",
         icon: IconDashboard,
-        onClick: () => onNavigate('dashboard'),
-        view: 'dashboard'
+        path: "/",
       },
       {
-        title: "Campaigns",
-        url: "#",
+        title: "Create Campaign",
+        url: "/create-campaign",
         icon: IconMail,
-        onClick: () => onNavigate('emailComposer'),
-        view: 'emailComposer'
+        path: "/create-campaign",
+      },
+      {
+        title: "Manage Campaigns",
+        url: "/manage-campaigns",
+        icon: IconFileText,
+        path: "/manage-campaigns",
       },
       {
         title: "Subscribers",
         url: "#",
         icon: IconUsers,
-        onClick: () => onNavigate('subscribers'),
         disabled: true,
         badge: "Soon",
-        view: 'subscribers'
+        path: "/subscribers",
       },
-    ]
+    ];
 
     // Add admin-only items
     if (isAdmin) {
       baseItems.splice(1, 0, {
         title: "Create User",
-        url: "#",
+        url: "/create-user",
         icon: IconUserPlus,
-        onClick: () => onNavigate('createUser'),
-        view: 'createUser'
-      })
+        path: "/create-user",
+      });
 
       baseItems.splice(2, 0, {
         title: "Manage Users",
-        url: "#",
+        url: "/user-management",
         icon: IconUsers,
-        onClick: () => onNavigate('userManagement'),
-        view: 'userManagement'
-      })
+        path: "/user-management",
+      });
 
       baseItems.push({
         title: "Analytics",
-        url: "#",
+        url: "/analytics",
         icon: IconChartBar,
-        onClick: () => onNavigate('analytics'),
         disabled: false,
         badge: "Admin",
-        view: 'analytics'
-      })
+        path: "/analytics",
+      });
     }
 
-    return baseItems
-  }
+    return baseItems;
+  };
 
   // Shared features navigation
   const navSharedFeatures = [
@@ -101,24 +100,21 @@ export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebar
       title: "Calendar",
       url: "#",
       icon: IconCalendar,
-      onClick: () => onNavigate('calendar'),
-      disabled: true
+      disabled: true,
     },
     {
       title: "Templates",
       url: "#",
       icon: IconFileText,
-      onClick: () => onNavigate('templates'),
-      disabled: true
+      disabled: true,
     },
     {
       title: "Team Chat",
       url: "#",
       icon: IconMessage,
-      onClick: () => onNavigate('chat'),
-      disabled: true
+      disabled: true,
     },
-  ]
+  ];
 
   // Secondary navigation
   const navSecondary = [
@@ -126,25 +122,23 @@ export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebar
       title: "Settings",
       url: "#",
       icon: IconSettings,
-      onClick: () => onNavigate('settings'),
-      disabled: true
+      disabled: true,
     },
     {
       title: "Help",
       url: "#",
       icon: IconHelp,
-      onClick: () => onNavigate('help'),
-      disabled: true
+      disabled: true,
     },
-  ]
+  ];
 
   // User data for the sidebar
   const userData = {
-    name: user?.email?.split('@')[0] || 'User',
-    email: user?.email || '',
+    name: user?.email?.split("@")[0] || "User",
+    email: user?.email || "",
     avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${user?.email}`,
-    role: user?.role || 'USER'
-  }
+    role: user?.role || "USER",
+  };
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -155,17 +149,17 @@ export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebar
               asChild
               className="data-[slot=sidebar-menu-button]:!p-1.5"
             >
-              <a href="#" onClick={(e) => { e.preventDefault(); onNavigate('dashboard'); }}>
+              <Link to="/">
                 <IconMail className="!size-5" />
                 <span className="text-base font-semibold">Email Marketing</span>
-              </a>
+              </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
       <SidebarContent>
-        <EmailNavMain items={getNavMain()} currentView={currentView} />
+        <EmailNavMain items={getNavMain()} currentPath={location.pathname} />
         <NavSharedFeatures items={navSharedFeatures} />
         <NavSecondary items={navSecondary} className="mt-auto" />
       </SidebarContent>
@@ -174,7 +168,7 @@ export function EmailSidebar({ onNavigate, currentView, ...props }: EmailSidebar
         <EmailNavUser user={userData} onLogout={logout} />
       </SidebarFooter>
     </Sidebar>
-  )
+  );
 }
 
 // Custom NavSharedFeatures component for shared features
@@ -182,12 +176,12 @@ function NavSharedFeatures({
   items,
 }: {
   items: {
-    title: string
-    url: string
-    icon?: Icon
-    onClick?: () => void
-    disabled?: boolean
-  }[]
+    title: string;
+    url: string;
+    icon?: Icon;
+    onClick?: () => void;
+    disabled?: boolean;
+  }[];
 }) {
   return (
     <div className="px-2 py-2">
@@ -201,7 +195,9 @@ function NavSharedFeatures({
             tooltip={item.title}
             onClick={item.onClick}
             disabled={item.disabled}
-            className={`${item.disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`${
+              item.disabled ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           >
             {item.icon && <item.icon className="size-4" />}
             <span>{item.title}</span>
@@ -214,5 +210,5 @@ function NavSharedFeatures({
         ))}
       </div>
     </div>
-  )
+  );
 }

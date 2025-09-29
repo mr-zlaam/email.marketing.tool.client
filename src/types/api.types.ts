@@ -1,20 +1,28 @@
 // API Response Types
 export interface ApiResponse<T = unknown> {
   success: boolean;
+  status: number;
   message: string;
   data?: T;
+  requestInfo?: {
+    url: string;
+    ip: string;
+    method: string;
+  };
+}
+
+export interface PaginationInfo {
+  currentPage: number;
+  pageSize: number;
+  totalRecord: number; // Updated to match new backend
+  totalPage: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
 }
 
 export interface PaginatedResponse<T> {
   items: T[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPreviousPage: boolean;
-  };
+  pagination: PaginationInfo;
 }
 
 // User Types
@@ -23,7 +31,7 @@ export interface User {
   username: string;
   fullName: string;
   email: string;
-  role: 'ADMIN' | 'USER';
+  role: "ADMIN" | "USER";
   isVerified: boolean;
   createdAt: string;
   updatedAt: string;
@@ -34,8 +42,14 @@ export interface CreateUserRequest {
   fullName: string;
   email: string;
   password: string;
-  role: 'ADMIN' | 'USER';
 }
+
+export type CreateUserResponse = ApiResponse<{ user: User }>;
+
+export type GetUsersResponse = ApiResponse<{
+  data: User[];
+  pagination: PaginationInfo;
+}>;
 
 export interface LoginRequest {
   email: string;
@@ -43,7 +57,7 @@ export interface LoginRequest {
 }
 
 export interface AuthResponse {
-  token: string;
+  accessToken: string;
   user: User;
   message: string;
 }
@@ -53,28 +67,57 @@ export interface EmailBatch {
   id: number;
   batchId: string;
   batchName: string;
-  composedEmail: string;
   totalEmails: number;
-  emailsSent: number;
-  emailsFailed: number;
-  status: 'pending' | 'sending' | 'completed' | 'failed';
-  createdBy: string;
+  status: "pending" | "processing" | "paused" | "completed" | "failed";
+  emailsPerBatch: number;
+  delayBetweenEmails: number;
+  subject: string;
+  composedEmail?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CreateEmailBatchRequest {
-  batchName: string;
-  composedEmail: string;
-  scheduleTime: 'NOW' | string; // ISO date string for scheduled
-  delayBetweenEmails: string; // in seconds
-  emailsPerBatch: string;
-  file: File; // CSV/Excel file with emails
+export interface EmailUpload {
+  id: number;
+  uploadedFileName: string;
+  totalEmails: number;
+  totalEmailSentToQueue: number;
+  remainingEmails: number;
+  status: string;
+  uploadedBy: string;
+  createdAt: string;
+  metaData: unknown;
+  batches: EmailBatch[];
 }
 
-export interface EmailBatchResponse extends ApiResponse<EmailBatch> {
-  totalEmails: number;
+export interface CreateEmailBatchRequest {
+  batchName: string;
+  subject: string;
+  composedEmail: string;
+  scheduleTime: "NOW" | string;
+  delayBetweenEmails: string;
+  emailsPerBatch: string;
+  file?: File;
+  uploadId?: number;
 }
+
+export type CreateEmailBatchResponse = ApiResponse<{
+  batch: EmailBatch;
+  uploadId: number;
+  totalEmails: number;
+  status: string;
+  operation: "created" | "resumed";
+}>;
+
+export type GetUploadsWithBatchesResponse = ApiResponse<{
+  uploads: EmailUpload[];
+  pagination: PaginationInfo;
+}>;
+
+export type GetSingleUploadResponse = ApiResponse<{
+  upload: EmailUpload;
+  totalBatches: number;
+}>;
 
 // Analytics Types
 export interface CampaignStats {
