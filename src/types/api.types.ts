@@ -119,6 +119,22 @@ export type GetSingleUploadResponse = ApiResponse<{
   totalBatches: number;
 }>;
 
+export interface DeletedCampaignData {
+  uploadId: number;
+  uploadedFileName: string;
+  uploadedBy: string;
+  batchId: string;
+  batchName: string;
+  deletedIndividualEmails: number;
+  removedQueuedJobs: string;
+  redisCleanup: string;
+}
+
+export type DeleteCampaignResponse = ApiResponse<{
+  deletedCampaign: DeletedCampaignData;
+  deletedAt: string;
+}>;
+
 // Analytics Types
 export interface CampaignStats {
   totalCampaigns: number;

@@ -4,10 +4,11 @@ import type { ReactNode } from 'react';
 
 interface ProtectedRouteProps {
   children: ReactNode;
+  requireAdmin?: boolean;
 }
 
-export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
-  const { isAuthenticated, isLoading } = useAuth();
+export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -22,6 +23,10 @@ export const ProtectedRoute = ({ children }: ProtectedRouteProps) => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (requireAdmin && !isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

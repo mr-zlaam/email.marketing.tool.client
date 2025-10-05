@@ -7,13 +7,16 @@ import { toast } from 'sonner';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { UserPlus, ArrowLeft } from 'lucide-react';
+import { UserPlus, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import { apiClient } from '@/lib/api';
+import { getErrorMessage } from '@/lib/error-utils';
+import { ErrorAlert, SuccessAlert } from '@/components/ErrorAlert';
 import { createUserSchema, type CreateUserFormData } from '@/schemas/validation.schemas';
 
 export const CreateUser = () => {
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSuccess, setCreateSuccess] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
   const queryClient = useQueryClient();
 
   const {
@@ -38,7 +41,7 @@ export const CreateUser = () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (error: unknown) => {
-      const errorMessage = (error as { message?: string })?.message || 'Failed to create user';
+      const errorMessage = getErrorMessage(error);
       setCreateError(errorMessage);
       setCreateSuccess(null);
       toast.error(errorMessage);
@@ -96,7 +99,7 @@ export const CreateUser = () => {
                 {errors.username && (
                   <p className="mt-2 text-sm text-red-500 font-medium">{errors.username.message}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">Only letters, numbers, and underscores allowed</p>
+                <p className="mt-1 text-xs text-gray-500">Only lowercase letters, numbers, and underscores allowed</p>
               </div>
 
               <div>
@@ -135,13 +138,27 @@ export const CreateUser = () => {
                 <label htmlFor="password" className="block text-sm font-semibold text-gray-800 mb-3">
                   Password
                 </label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="Enter user password"
-                  {...register('password')}
-                  className={`h-12 text-base ${errors.password ? 'border-red-400 focus-visible:ring-red-400' : 'border-gray-200 focus-visible:ring-amber-600'} transition-colors`}
-                />
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter user password"
+                    {...register('password')}
+                    className={`h-12 text-base pr-10 ${errors.password ? 'border-red-400 focus-visible:ring-red-400' : 'border-gray-200 focus-visible:ring-amber-600'} transition-colors`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 transition-colors"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
                 {errors.password && (
                   <p className="mt-2 text-sm text-red-500 font-medium">{errors.password.message}</p>
                 )}
@@ -151,15 +168,19 @@ export const CreateUser = () => {
             </div>
 
             {createError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-700 font-medium">{createError}</p>
-              </div>
+              <ErrorAlert
+                error={createError}
+                title="User Creation Failed"
+                onDismiss={() => setCreateError(null)}
+              />
             )}
 
             {createSuccess && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <p className="text-sm text-green-700 font-medium">{createSuccess}</p>
-              </div>
+              <SuccessAlert
+                message={createSuccess}
+                title="User Created Successfully"
+                onDismiss={() => setCreateSuccess(null)}
+              />
             )}
 
             <div className="flex gap-4">

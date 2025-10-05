@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3000/api/v1";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:8000/api/v1";
 
 export class ApiError extends Error {
   public status: number;
@@ -176,8 +176,8 @@ class ApiClient {
     delayBetweenEmails: string;
     emailsPerBatch: string;
     scheduleTime: string;
-  }): Promise<unknown> {
-    return this.request("/emailBatch/createEmailBatch", {
+  }) {
+    return this.request<unknown>("/emailBatch/createEmailBatch", {
       method: "POST",
       body: JSON.stringify(data),
     });
@@ -192,6 +192,12 @@ class ApiClient {
   async resumeBatch(batchId: string): Promise<{ message: string }> {
     return this.request(`/emailBatch/resumeBatch/${batchId}`, {
       method: "PATCH",
+    });
+  }
+
+  async deleteCampaign(uploadId: number) {
+    return this.request<unknown>(`/emailBatch/admin/deleteCampaign/${uploadId}`, {
+      method: "DELETE",
     });
   }
 

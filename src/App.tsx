@@ -54,7 +54,7 @@ const AppRoutes = () => {
       <Route
         path="/existing-campaigns"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireAdmin={true}>
             <ExistingCampaigns />
           </ProtectedRoute>
         }
@@ -81,7 +81,7 @@ const AppRoutes = () => {
       <Route
         path="/user-management"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireAdmin={true}>
             <UserManagement />
           </ProtectedRoute>
         }
@@ -90,7 +90,7 @@ const AppRoutes = () => {
       <Route
         path="/create-user"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireAdmin={true}>
             <CreateUser />
           </ProtectedRoute>
         }
@@ -99,7 +99,7 @@ const AppRoutes = () => {
       <Route
         path="/analytics"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute requireAdmin={true}>
             <Analytics />
           </ProtectedRoute>
         }

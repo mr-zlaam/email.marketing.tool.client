@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { emailBatchSchema, type EmailBatchFormData } from "@/schemas/validation.schemas";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,34 +24,48 @@ import {
   IconArrowLeft,
   IconLoader2,
   IconFileText,
+  IconTrash,
 } from "@tabler/icons-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { apiClient } from "@/lib/api";
 import { RichTextEditor } from "@/components/RichTextEditor";
+import { DelaySelector } from "@/components/DelaySelector";
+import { useAuth } from "@/context/AuthContext";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type {
   GetUploadsWithBatchesResponse,
   EmailUpload,
+  CreateEmailBatchResponse,
+  DeleteCampaignResponse,
 } from "@/types/api.types";
 
-const batchSchema = z.object({
-  batchName: z.string().min(1, "Batch name is required"),
-  subject: z.string().min(1, "Subject is required"),
-  scheduleTime: z.enum(["NOW", "SCHEDULED"]),
-  scheduledDate: z.string().optional(),
-  scheduledTime: z.string().optional(),
-  delayBetweenEmails: z.string().min(1, "Delay is required"),
-  emailsPerBatch: z.string().min(1, "Emails per batch is required"),
-});
-
-type BatchFormData = z.infer<typeof batchSchema>;
-
 export const ExistingCampaigns = () => {
-  const [emailContent, setEmailContent] = useState("");
+  // LocalStorage hooks for persistence
+  const [storedBatchName, setStoredBatchName] = useLocalStorage("existingCampaigns_batchName", "");
+  const [storedSubject, setStoredSubject] = useLocalStorage("existingCampaigns_subject", "");
+  const [storedEmailContent, setStoredEmailContent] = useLocalStorage("existingCampaigns_emailContent", "");
+  const [storedDelay, setStoredDelay] = useLocalStorage("existingCampaigns_delay", "5");
+  const [storedEmailsPerBatch, setStoredEmailsPerBatch] = useLocalStorage("existingCampaigns_emailsPerBatch", "50");
+
+  const [emailContent, setEmailContent] = useState(storedEmailContent);
   const [selectedUpload, setSelectedUpload] = useState<EmailUpload | null>(
     null
   );
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [uploadToDelete, setUploadToDelete] = useState<EmailUpload | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { isAdmin } = useAuth();
 
   const {
     register,
@@ -59,16 +73,43 @@ export const ExistingCampaigns = () => {
     formState: { errors },
     watch,
     setValue,
-  } = useForm<BatchFormData>({
-    resolver: zodResolver(batchSchema),
+  } = useForm<EmailBatchFormData>({
+    resolver: zodResolver(emailBatchSchema),
     defaultValues: {
+      batchName: storedBatchName,
+      subject: storedSubject,
       scheduleTime: "NOW",
-      delayBetweenEmails: "5",
-      emailsPerBatch: "50",
+      delayBetweenEmails: storedDelay,
+      emailsPerBatch: storedEmailsPerBatch,
     },
   });
 
   const scheduleTime = watch("scheduleTime");
+  const batchName = watch("batchName");
+  const subject = watch("subject");
+  const delayBetweenEmails = watch("delayBetweenEmails");
+  const emailsPerBatch = watch("emailsPerBatch");
+
+  // Sync form values to localStorage
+  useEffect(() => {
+    setStoredBatchName(batchName || "");
+  }, [batchName, setStoredBatchName]);
+
+  useEffect(() => {
+    setStoredSubject(subject || "");
+  }, [subject, setStoredSubject]);
+
+  useEffect(() => {
+    setStoredEmailContent(emailContent);
+  }, [emailContent, setStoredEmailContent]);
+
+  useEffect(() => {
+    setStoredDelay(delayBetweenEmails || "5");
+  }, [delayBetweenEmails, setStoredDelay]);
+
+  useEffect(() => {
+    setStoredEmailsPerBatch(emailsPerBatch || "50");
+  }, [emailsPerBatch, setStoredEmailsPerBatch]);
 
   // Fetch existing uploads
   const { data: uploadsData, isLoading } = useQuery({
@@ -78,7 +119,7 @@ export const ExistingCampaigns = () => {
 
   // Create batch mutation
   const createBatchMutation = useMutation({
-    mutationFn: (data: {
+    mutationFn: async (data: {
       uploadId: number;
       batchName: string;
       subject: string;
@@ -86,8 +127,11 @@ export const ExistingCampaigns = () => {
       delayBetweenEmails: string;
       emailsPerBatch: string;
       scheduleTime: string;
-    }) => apiClient.createEmailBatchFromExistingUpload(data),
-    onSuccess: (response: any) => {
+    }) => {
+      const result = await apiClient.createEmailBatchFromExistingUpload(data);
+      return result as CreateEmailBatchResponse;
+    },
+    onSuccess: (response: CreateEmailBatchResponse) => {
       const operation = response?.data?.operation || "created";
       const message = operation === "resumed" ? "Batch updated and resumed successfully!" : "Batch created successfully!";
       toast.success(message);
@@ -97,9 +141,67 @@ export const ExistingCampaigns = () => {
     onError: (error: unknown) => {
       const errorMessage =
         (error as { message?: string })?.message || "Failed to create batch";
+
+      // Handle batch size validation errors for resume operation
+      if (errorMessage.includes("Batch size") && errorMessage.includes("cannot be greater than remaining emails")) {
+        // Extract the suggested batch size from error message
+        const match = errorMessage.match(/Please set batch size to (\d+) or less/);
+        if (match) {
+          const suggestedSize = match[1];
+          setValue("emailsPerBatch", suggestedSize);
+          toast.error(`Only ${suggestedSize} emails remaining. Batch size adjusted automatically. Please try again.`);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else if (errorMessage.includes("Batch size") && errorMessage.includes("cannot be greater than total emails")) {
+        // Extract the suggested batch size from error message
+        const match = errorMessage.match(/Please set batch size to (\d+) or less/);
+        if (match) {
+          const suggestedSize = match[1];
+          setValue("emailsPerBatch", suggestedSize);
+          toast.error(`Total emails: ${suggestedSize}. Batch size adjusted automatically. Please try again.`);
+        } else {
+          toast.error(errorMessage);
+        }
+      } else {
+        toast.error(errorMessage);
+      }
+    },
+  });
+
+  // Delete campaign mutation (Admin only)
+  const deleteCampaignMutation = useMutation({
+    mutationFn: async (uploadId: number) => {
+      const result = await apiClient.deleteCampaign(uploadId);
+      return result as DeleteCampaignResponse;
+    },
+    onSuccess: (response: DeleteCampaignResponse) => {
+      toast.success(response?.message || "Campaign deleted successfully");
+      queryClient.invalidateQueries({ queryKey: ["uploads-with-batches"] });
+      setDeleteDialogOpen(false);
+      setUploadToDelete(null);
+      if (selectedUpload?.id === uploadToDelete?.id) {
+        setSelectedUpload(null);
+      }
+    },
+    onError: (error: unknown) => {
+      const errorMessage =
+        (error as { message?: string })?.message || "Failed to delete campaign";
       toast.error(errorMessage);
     },
   });
+
+  const handleDeleteClick = (upload: EmailUpload, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setUploadToDelete(upload);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (uploadToDelete) {
+      deleteCampaignMutation.mutate(uploadToDelete.id);
+    }
+  };
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const uploads =
@@ -115,7 +217,7 @@ export const ExistingCampaigns = () => {
 
         // Pre-fill form with existing batch data if available
         if (upload.batches.length > 0) {
-          const batch = upload.batches[0]; // Get the first (and should be only) batch
+          const batch = upload.batches[0];
           setValue("batchName", batch.batchName || "");
           setValue("subject", batch.subject || "");
           setValue(
@@ -124,19 +226,43 @@ export const ExistingCampaigns = () => {
           );
           setValue("emailsPerBatch", batch.emailsPerBatch.toString());
           setEmailContent(batch.composedEmail || "");
+        } else {
+          // No batch exists - try to load from localStorage (from EmailComposer)
+          const savedEmail = localStorage.getItem("emailComposer_emailContent");
+          const savedSubject = localStorage.getItem("emailComposer_subject");
+          const savedBatchName = localStorage.getItem("emailComposer_batchName");
+
+          if (savedEmail) {
+            setEmailContent(JSON.parse(savedEmail));
+          }
+          if (savedSubject) {
+            setValue("subject", JSON.parse(savedSubject));
+          }
+          if (savedBatchName) {
+            setValue("batchName", JSON.parse(savedBatchName));
+          }
         }
       }
     }
   }, [uploads, searchParams, setValue]);
 
-  const onSubmit = (data: BatchFormData) => {
+  const onSubmit = (data: EmailBatchFormData) => {
     if (!selectedUpload) {
       toast.error("Please select a campaign first");
       return;
     }
 
+    // Validate email content length
     if (!emailContent.trim()) {
       toast.error("Please write your email content");
+      return;
+    }
+    if (emailContent.length < 10) {
+      toast.error("Composed email cannot be empty (minimum 10 characters)");
+      return;
+    }
+    if (emailContent.length > 10000) {
+      toast.error("Composed email must be less than 10000 characters");
       return;
     }
 
@@ -261,9 +387,22 @@ export const ExistingCampaigns = () => {
                               <h4 className="font-medium text-gray-900 truncate">
                                 {upload.uploadedFileName}
                               </h4>
-                              <Badge className={getStatusColor(upload.status)}>
-                                {upload.status}
-                              </Badge>
+                              <div className="flex items-center gap-2">
+                                <Badge className={getStatusColor(upload.batches.length > 0 ? upload.batches[0].status : upload.status)}>
+                                  {upload.batches.length > 0 ? upload.batches[0].status : upload.status}
+                                </Badge>
+                                {isAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    onClick={(e) => handleDeleteClick(upload, e)}
+                                    title="Delete campaign"
+                                  >
+                                    <IconTrash className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </div>
                             <p className="text-sm text-gray-500">
                               Uploaded {formatDate(upload.createdAt)} by{" "}
@@ -272,11 +411,11 @@ export const ExistingCampaigns = () => {
                             <div className="flex items-center gap-4 text-sm text-gray-600">
                               <div className="flex items-center gap-1">
                                 <IconUsers className="w-4 h-4" />
-                                <span>{upload.totalEmails} emails</span>
+                                <span>{upload.totalEmails} total</span>
                               </div>
                               <div className="flex items-center gap-1">
                                 <IconClock className="w-4 h-4" />
-                                <span>{upload.batches.length > 0 ? "Active batch" : "No batch"}</span>
+                                <span>{upload.remainingEmails} remaining</span>
                               </div>
                             </div>
                           </div>
@@ -304,16 +443,21 @@ export const ExistingCampaigns = () => {
                         {selectedUpload.uploadedFileName}
                       </h4>
                       <p className="text-sm text-green-700 mt-1">
-                        {selectedUpload.totalEmails} emails total •
+                        {selectedUpload.totalEmails} emails total • {selectedUpload.remainingEmails} remaining
                         {selectedUpload.batches.length > 0
-                          ? ` Current batch status: ${selectedUpload.batches[0].status}`
-                          : " No active batch"}
+                          ? ` • Current batch status: ${selectedUpload.batches[0].status}`
+                          : " • No active batch"}
                       </p>
                       {selectedUpload.batches.length > 0 && (
                         <div className="mt-2 text-xs text-green-600">
                           Batch: {selectedUpload.batches[0].batchName} •
                           Processing {selectedUpload.batches[0].emailsPerBatch}{" "}
                           emails per batch
+                        </div>
+                      )}
+                      {selectedUpload.remainingEmails > 0 && selectedUpload.remainingEmails < 100 && (
+                        <div className="mt-2 text-xs text-amber-600 font-medium">
+                          ⚠️ Only {selectedUpload.remainingEmails} emails remaining. Set batch size to {selectedUpload.remainingEmails} or less.
                         </div>
                       )}
                     </div>
@@ -396,22 +540,12 @@ export const ExistingCampaigns = () => {
                       </div>
 
                       <div>
-                        <Label htmlFor="delayBetweenEmails">
-                          Delay Between Emails (seconds)
-                        </Label>
-                        <Input
-                          id="delayBetweenEmails"
-                          type="number"
-                          min="1"
-                          max="3600"
-                          {...register("delayBetweenEmails")}
-                          className="mt-1"
+                        <DelaySelector
+                          value={delayBetweenEmails}
+                          onChange={(value) => setValue("delayBetweenEmails", value)}
+                          label="Delay Between Emails"
+                          error={errors.delayBetweenEmails?.message}
                         />
-                        {errors.delayBetweenEmails && (
-                          <p className="mt-1 text-sm text-red-500">
-                            {errors.delayBetweenEmails.message}
-                          </p>
-                        )}
                       </div>
                     </div>
 
@@ -515,6 +649,47 @@ export const ExistingCampaigns = () => {
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Campaign</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete campaign <strong>{uploadToDelete?.uploadedFileName}</strong>?
+              <br /><br />
+              This action will:
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Remove all {uploadToDelete?.remainingEmails || 0} remaining email records</li>
+                <li>Delete batch configuration and metadata</li>
+                <li>Clear all queued jobs from the processing queue</li>
+                <li>Remove Redis cache data</li>
+              </ul>
+              <br />
+              <strong className="text-red-600">This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteCampaignMutation.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteCampaignMutation.isPending}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {deleteCampaignMutation.isPending ? (
+                <>
+                  <IconLoader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete Campaign"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

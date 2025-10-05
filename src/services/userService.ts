@@ -1,63 +1,132 @@
 import type { CreateUserRequest, CreateUserResponse, User } from '@/types/auth.types';
 
-// Generate a random UUID for new users
-const generateUUID = (): string => {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random() * 16 | 0;
-    const v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-};
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
-// Mock user creation storage
-const mockCreatedUsers: User[] = [];
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('accessToken');
+};
 
 export const userService = {
   async createUser(userData: CreateUserRequest): Promise<CreateUserResponse> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    // Check if user already exists
-    const existingUser = mockCreatedUsers.find(user => user.email === userData.email);
-    if (existingUser) {
-      throw new Error('User with this email already exists');
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in again.');
     }
 
-    // Create new user
-    const newUser: User = {
-      uid: generateUUID(),
-      email: userData.email,
-      role: userData.role,
-      isVerified: true
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/adminCreatesTheUser`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(userData),
+      });
 
-    // Store in mock database
-    mockCreatedUsers.push(newUser);
+      const data = await response.json();
 
-    return {
-      user: newUser,
-      message: `User ${userData.email} created successfully with role ${userData.role}`
-    };
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        if (response.status === 400) {
+          throw new Error(data.message || 'Invalid user data. Please check the form and try again.');
+        }
+        throw new Error(data.message || 'Failed to create user');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to create user');
+      }
+
+      return {
+        user: data.data.user,
+        message: data.message || 'User created successfully'
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error. Please check your connection and try again.');
+    }
   },
 
   async getUsers(): Promise<User[]> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockCreatedUsers;
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in again.');
+    }
+
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/getAllUser`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        throw new Error(data.message || 'Failed to fetch users');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to fetch users');
+      }
+
+      return data.data.users || [];
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error. Please check your connection and try again.');
+    }
   },
 
   async deleteUser(uid: string): Promise<{ message: string }> {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const userIndex = mockCreatedUsers.findIndex(user => user.uid === uid);
-    if (userIndex === -1) {
-      throw new Error('User not found');
+    const token = getAuthToken();
+    if (!token) {
+      throw new Error('Authentication required. Please log in again.');
     }
 
-    const deletedUser = mockCreatedUsers.splice(userIndex, 1)[0];
-    return {
-      message: `User ${deletedUser.email} deleted successfully`
-    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/user/deleteUser/${uid}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        if (response.status === 403) {
+          throw new Error('Access denied. Admin privileges required.');
+        }
+        if (response.status === 404) {
+          throw new Error('User not found. They may have already been deleted.');
+        }
+        throw new Error(data.message || 'Failed to delete user');
+      }
+
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete user');
+      }
+
+      return {
+        message: data.message || 'User deleted successfully'
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Network error. Please check your connection and try again.');
+    }
   }
 };

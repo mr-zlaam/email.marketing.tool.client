@@ -55,38 +55,35 @@ export function EmailSidebar(props: EmailSidebarProps) {
         icon: IconFileText,
         path: "/manage-campaigns",
       },
-      {
-        title: "Subscribers",
-        url: "#",
-        icon: IconUsers,
-        disabled: true,
-        badge: "Soon",
-        path: "/subscribers",
-      },
     ];
 
     // Add admin-only items
     if (isAdmin) {
-      baseItems.splice(1, 0, {
-        title: "Create User",
-        url: "/create-user",
-        icon: IconUserPlus,
-        path: "/create-user",
+      baseItems.push({
+        title: "Existing Campaigns",
+        url: "/existing-campaigns",
+        icon: IconChartBar,
+        path: "/existing-campaigns",
       });
 
-      baseItems.splice(2, 0, {
-        title: "Manage Users",
+      baseItems.push({
+        title: "User Management",
         url: "/user-management",
         icon: IconUsers,
         path: "/user-management",
       });
 
       baseItems.push({
+        title: "Create User",
+        url: "/create-user",
+        icon: IconUserPlus,
+        path: "/create-user",
+      });
+
+      baseItems.push({
         title: "Analytics",
         url: "/analytics",
         icon: IconChartBar,
-        disabled: false,
-        badge: "Admin",
         path: "/analytics",
       });
     }

@@ -1,13 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api";
+import { getErrorMessage } from "@/lib/error-utils";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { emailBatchSchema, type EmailBatchFormData } from "@/schemas/validation.schemas";
 import { Layout } from "@/components/Layout";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { FileUpload } from "@/components/FileUpload";
+import { DelaySelector } from "@/components/DelaySelector";
+import { ErrorAlert, SuccessAlert } from "@/components/ErrorAlert";
+import { useLocalStorage } from "@/hooks/useLocalStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -34,20 +38,16 @@ import {
   IconArrowLeft,
 } from "@tabler/icons-react";
 
-const emailBatchSchema = z.object({
-  batchName: z.string().min(1, "Batch name is required"),
-  subject: z.string().min(1, "Subject is required"),
-  scheduleTime: z.enum(["NOW", "SCHEDULED"]),
-  scheduledDate: z.string().optional(),
-  scheduledTime: z.string().optional(),
-  delayBetweenEmails: z.string().min(1, "Delay is required"),
-  emailsPerBatch: z.string().min(1, "Emails per batch is required"),
-});
-
-type EmailBatchFormData = z.infer<typeof emailBatchSchema>;
-
 export const EmailComposer = () => {
-  const [emailContent, setEmailContent] = useState("");
+  // LocalStorage hooks for persistence
+  const [storedBatchName, setStoredBatchName] = useLocalStorage("emailComposer_batchName", "");
+  const [storedSubject, setStoredSubject] = useLocalStorage("emailComposer_subject", "");
+  const [storedEmailContent, setStoredEmailContent] = useLocalStorage("emailComposer_emailContent", "");
+  const [storedDelay, setStoredDelay] = useLocalStorage("emailComposer_delay", "5");
+  const [storedEmailsPerBatch, setStoredEmailsPerBatch] = useLocalStorage("emailComposer_emailsPerBatch", "50");
+  const [storedScheduleTime, setStoredScheduleTime] = useLocalStorage<"NOW" | "SCHEDULED">("emailComposer_scheduleTime", "NOW");
+
+  const [emailContent, setEmailContent] = useState(storedEmailContent);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
@@ -62,13 +62,46 @@ export const EmailComposer = () => {
   } = useForm<EmailBatchFormData>({
     resolver: zodResolver(emailBatchSchema),
     defaultValues: {
-      scheduleTime: "NOW",
-      delayBetweenEmails: "5",
-      emailsPerBatch: "50",
+      batchName: storedBatchName,
+      subject: storedSubject,
+      scheduleTime: storedScheduleTime,
+      delayBetweenEmails: storedDelay,
+      emailsPerBatch: storedEmailsPerBatch,
     },
   });
 
   const scheduleTime = watch("scheduleTime");
+  const batchName = watch("batchName");
+  const subject = watch("subject");
+  const delayBetweenEmails = watch("delayBetweenEmails");
+  const emailsPerBatch = watch("emailsPerBatch");
+
+  // Sync form values to localStorage
+  useEffect(() => {
+    setStoredBatchName(batchName || "");
+  }, [batchName, setStoredBatchName]);
+
+  useEffect(() => {
+    setStoredSubject(subject || "");
+  }, [subject, setStoredSubject]);
+
+  useEffect(() => {
+    setStoredEmailContent(emailContent);
+  }, [emailContent, setStoredEmailContent]);
+
+  useEffect(() => {
+    setStoredDelay(delayBetweenEmails || "5");
+  }, [delayBetweenEmails, setStoredDelay]);
+
+  useEffect(() => {
+    setStoredEmailsPerBatch(emailsPerBatch || "50");
+  }, [emailsPerBatch, setStoredEmailsPerBatch]);
+
+  useEffect(() => {
+    if (scheduleTime === "NOW" || scheduleTime === "SCHEDULED") {
+      setStoredScheduleTime(scheduleTime);
+    }
+  }, [scheduleTime, setStoredScheduleTime]);
 
   const handleFileSelect = (file: File | null) => {
     setSelectedFile(file);
@@ -81,8 +114,17 @@ export const EmailComposer = () => {
       return;
     }
 
+    // Validate email content length
     if (!emailContent.trim()) {
       setSubmitError("Please write your email content");
+      return;
+    }
+    if (emailContent.length < 10) {
+      setSubmitError("Composed email cannot be empty (minimum 10 characters)");
+      return;
+    }
+    if (emailContent.length > 10000) {
+      setSubmitError("Composed email must be less than 10000 characters");
       return;
     }
 
@@ -94,7 +136,7 @@ export const EmailComposer = () => {
       const formData = new FormData();
       formData.append("file", selectedFile);
       formData.append("batchName", data.batchName);
-      formData.append("composedEmail", emailContent); // Updated to match backend
+      formData.append("composedEmail", emailContent);
       formData.append("delayBetweenEmails", data.delayBetweenEmails);
       formData.append("emailsPerBatch", data.emailsPerBatch);
       formData.append("subject", data.subject);
@@ -122,20 +164,29 @@ export const EmailComposer = () => {
       setSubmitSuccess(successMessage);
       toast.success(successMessage);
 
-      // Reset form
+      // Reset file selection only
       setSelectedFile(null);
-      setEmailContent("");
-      setValue("batchName", "");
-      setValue("subject", "");
-      setValue("scheduleTime", "NOW");
-      setValue("delayBetweenEmails", "5");
-      setValue("emailsPerBatch", "50");
     } catch (error: unknown) {
-      const errorMessage =
-        (error as { message?: string })?.message ||
-        "Failed to create email batch. Please try again.";
-      setSubmitError(errorMessage);
-      toast.error(errorMessage);
+      const errorMessage = getErrorMessage(error);
+
+      // Handle batch size validation errors with helpful suggestions
+      if (errorMessage.includes("Batch size") && errorMessage.includes("cannot be greater than")) {
+        // Extract the suggested batch size from error message
+        const match = errorMessage.match(/Please set batch size to (\d+) or less/);
+        if (match) {
+          const suggestedSize = match[1];
+          setValue("emailsPerBatch", suggestedSize);
+          setSubmitError(`${errorMessage}\n\nBatch size has been automatically adjusted to ${suggestedSize}. Please try again.`);
+          toast.error(`Batch size adjusted to ${suggestedSize} emails`);
+        } else {
+          setSubmitError(errorMessage);
+          toast.error(errorMessage);
+        }
+      } else {
+        setSubmitError(errorMessage);
+        toast.error(errorMessage);
+      }
+
       console.error("Email batch creation error:", error);
     } finally {
       setIsSubmitting(false);
@@ -285,22 +336,12 @@ export const EmailComposer = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="delayBetweenEmails">
-                        Delay Between Emails (seconds)
-                      </Label>
-                      <Input
-                        id="delayBetweenEmails"
-                        type="number"
-                        min="1"
-                        max="3600"
-                        {...register("delayBetweenEmails")}
-                        className="mt-1"
+                      <DelaySelector
+                        value={delayBetweenEmails}
+                        onChange={(value) => setValue("delayBetweenEmails", value)}
+                        label="Delay Between Emails"
+                        error={errors.delayBetweenEmails?.message}
                       />
-                      {errors.delayBetweenEmails && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {errors.delayBetweenEmails.message}
-                        </p>
-                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -365,16 +406,22 @@ export const EmailComposer = () => {
                 <Card>
                   <CardContent className="pt-6">
                     {submitError && (
-                      <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm text-red-700">{submitError}</p>
+                      <div className="mb-4">
+                        <ErrorAlert
+                          error={submitError}
+                          title="Campaign Creation Failed"
+                          onDismiss={() => setSubmitError(null)}
+                        />
                       </div>
                     )}
 
                     {submitSuccess && (
-                      <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-                        <p className="text-sm text-green-700">
-                          {submitSuccess}
-                        </p>
+                      <div className="mb-4">
+                        <SuccessAlert
+                          message={submitSuccess}
+                          title="Campaign Created Successfully"
+                          onDismiss={() => setSubmitSuccess(null)}
+                        />
                       </div>
                     )}
 

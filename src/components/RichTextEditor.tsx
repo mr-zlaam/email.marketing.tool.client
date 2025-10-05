@@ -4,6 +4,7 @@ import { TextStyle } from '@tiptap/extension-text-style'
 import { TextAlign } from '@tiptap/extension-text-align'
 import { FontFamily } from '@tiptap/extension-font-family'
 import { Link } from '@tiptap/extension-link'
+import { Image } from '@tiptap/extension-image'
 import { Blockquote } from '@tiptap/extension-blockquote'
 import { CodeBlock } from '@tiptap/extension-code-block'
 import { Button } from '@/components/ui/button'
@@ -27,6 +28,7 @@ import {
   IconLink,
   IconUnlink,
   IconCodeDots,
+  IconPhoto,
 } from '@tabler/icons-react'
 
 interface RichTextEditorProps {
@@ -42,14 +44,41 @@ export const RichTextEditor = ({
   editable = true
 }: RichTextEditorProps) => {
   const [showLinkInput, setShowLinkInput] = useState(false)
+  const [showImageInput, setShowImageInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
 
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
-        blockquote: false, // We'll use our own
-        codeBlock: false,  // We'll use our own
-        link: false,       // We'll use our own Link extension
+        blockquote: false,
+        codeBlock: false,
+        link: false,
+        bulletList: {
+          HTMLAttributes: {
+            style: 'list-style-type: disc; padding-left: 24px; margin-left: 16px; margin-top: 8px; margin-bottom: 8px;',
+          },
+        },
+        orderedList: {
+          HTMLAttributes: {
+            style: 'list-style-type: decimal; padding-left: 24px; margin-left: 16px; margin-top: 8px; margin-bottom: 8px;',
+          },
+        },
+        listItem: {
+          HTMLAttributes: {
+            style: 'padding-left: 8px; margin-bottom: 4px;',
+          },
+        },
+        paragraph: {
+          HTMLAttributes: {
+            style: 'margin-bottom: 12px;',
+          },
+        },
+        heading: {
+          HTMLAttributes: {
+            style: 'font-weight: bold; margin-bottom: 12px;',
+          },
+        },
       }),
       TextStyle,
       TextAlign.configure({
@@ -59,28 +88,42 @@ export const RichTextEditor = ({
       Link.configure({
         openOnClick: false,
         HTMLAttributes: {
-          class: 'text-blue-600 underline hover:text-blue-800',
+          style: 'color: #2563eb; text-decoration: underline;',
         },
+      }),
+      Image.configure({
+        HTMLAttributes: {
+          style: 'max-width: 100%; height: auto; border-radius: 8px; margin: 16px 0;',
+        },
+        inline: false,
       }),
       Blockquote.configure({
         HTMLAttributes: {
-          class: 'border-l-4 border-gray-300 pl-4 italic text-gray-700',
+          style: 'border-left: 4px solid #9CA3AF; padding-left: 16px; font-style: italic; color: #374151; margin: 16px 0;',
         },
       }),
       CodeBlock.configure({
         HTMLAttributes: {
-          class: 'bg-gray-100 rounded p-3 font-mono text-sm border',
+          style: 'background-color: #F3F4F6; border-radius: 8px; padding: 16px; font-family: monospace; font-size: 14px; border: 1px solid #D1D5DB; margin: 16px 0; overflow-x: auto;',
         },
       }),
     ],
     content,
     editable,
     onUpdate: ({ editor }) => {
-      onChange?.(editor.getHTML())
+      // Get HTML and add inline styles for headings
+      let html = editor.getHTML()
+
+      // Add font-size to headings for email compatibility
+      html = html.replace(/<h1/g, '<h1 style="font-size: 32px; font-weight: bold; margin-bottom: 16px;"')
+      html = html.replace(/<h2/g, '<h2 style="font-size: 24px; font-weight: bold; margin-bottom: 12px;"')
+      html = html.replace(/<h3/g, '<h3 style="font-size: 20px; font-weight: bold; margin-bottom: 8px;"')
+
+      onChange?.(html)
     },
     editorProps: {
       attributes: {
-        class: 'focus:outline-none min-h-[400px] p-4',
+        class: 'focus:outline-none min-h-[200px] max-h-[600px] overflow-y-auto p-4',
       },
     },
   })
@@ -131,10 +174,18 @@ export const RichTextEditor = ({
     editor.chain().focus().unsetLink().run()
   }
 
+  const handleAddImage = () => {
+    if (imageUrl) {
+      editor.chain().focus().setImage({ src: imageUrl }).run()
+      setImageUrl('')
+      setShowImageInput(false)
+    }
+  }
+
   if (!editable) {
     return (
       <div className="border rounded-lg p-4 bg-gray-50">
-        <div className="rich-text-editor">
+        <div className="rich-text-content">
           <EditorContent editor={editor} />
         </div>
       </div>
@@ -142,22 +193,22 @@ export const RichTextEditor = ({
   }
 
   return (
-    <div className="border rounded-lg overflow-hidden">
-      {/* Toolbar */}
-      <div className="border-b bg-gray-50 p-2 flex flex-wrap gap-1">
+    <div className="border rounded-lg overflow-hidden flex flex-col">
+      {/* Sticky Toolbar */}
+      <div className="border-b bg-gray-50 p-2 flex flex-wrap gap-1 sticky top-0 z-10">
         {/* Text Formatting */}
         <div className="flex gap-1">
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive('bold')}
-            title="Bold"
+            title="Bold (Ctrl+B)"
           >
             <IconBold className="h-4 w-4" />
           </ToolbarButton>
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             isActive={editor.isActive('italic')}
-            title="Italic"
+            title="Italic (Ctrl+I)"
           >
             <IconItalic className="h-4 w-4" />
           </ToolbarButton>
@@ -267,7 +318,7 @@ export const RichTextEditor = ({
 
         <Separator orientation="vertical" className="h-6" />
 
-        {/* Links */}
+        {/* Links and Images */}
         <div className="flex gap-1 items-center">
           <ToolbarButton
             onClick={() => setShowLinkInput(!showLinkInput)}
@@ -282,6 +333,13 @@ export const RichTextEditor = ({
             title="Remove Link"
           >
             <IconUnlink className="h-4 w-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => setShowImageInput(!showImageInput)}
+            isActive={showImageInput}
+            title="Add Image (URL)"
+          >
+            <IconPhoto className="h-4 w-4" />
           </ToolbarButton>
         </div>
       </div>
@@ -334,8 +392,127 @@ export const RichTextEditor = ({
         </div>
       )}
 
-      {/* Editor Content */}
-      <div className="min-h-[400px] rich-text-editor">
+      {/* Image Input */}
+      {showImageInput && (
+        <div className="border-b bg-purple-50 p-3 flex gap-2 items-center">
+          <Input
+            type="url"
+            placeholder="https://example.com/image.jpg"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            className="flex-1"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddImage()
+              }
+              if (e.key === 'Escape') {
+                setShowImageInput(false)
+                setImageUrl('')
+              }
+            }}
+          />
+          <Button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              handleAddImage();
+            }}
+            size="sm"
+            disabled={!imageUrl.trim()}
+          >
+            Add Image
+          </Button>
+          <Button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowImageInput(false);
+              setImageUrl('');
+            }}
+            variant="ghost"
+            size="sm"
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+
+      {/* Editor Content - Auto-growing */}
+      <div className="flex-1 rich-text-content">
+        <style>{`
+          .rich-text-content .ProseMirror {
+            outline: none;
+          }
+          .rich-text-content .ProseMirror > * {
+            margin: 0;
+          }
+          .rich-text-content .ProseMirror ul,
+          .rich-text-content .ProseMirror ol {
+            padding-left: 1.5rem;
+            margin-left: 1rem;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+          }
+          .rich-text-content .ProseMirror ul {
+            list-style-type: disc;
+          }
+          .rich-text-content .ProseMirror ol {
+            list-style-type: decimal;
+          }
+          .rich-text-content .ProseMirror li {
+            padding-left: 0.5rem;
+            margin-bottom: 0.25rem;
+          }
+          .rich-text-content .ProseMirror li > p {
+            margin: 0;
+          }
+          .rich-text-content .ProseMirror p {
+            margin-bottom: 0.75rem;
+          }
+          .rich-text-content .ProseMirror h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+          }
+          .rich-text-content .ProseMirror h2 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.75rem;
+          }
+          .rich-text-content .ProseMirror h3 {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+          }
+          .rich-text-content .ProseMirror img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.5rem;
+            margin: 1rem 0;
+          }
+          .rich-text-content .ProseMirror blockquote {
+            border-left: 4px solid #9CA3AF;
+            padding-left: 1rem;
+            font-style: italic;
+            color: #374151;
+            margin: 1rem 0;
+          }
+          .rich-text-content .ProseMirror pre {
+            background-color: #F3F4F6;
+            border: 1px solid #D1D5DB;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            overflow-x: auto;
+            margin: 1rem 0;
+          }
+          .rich-text-content .ProseMirror code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+          }
+        `}</style>
         <EditorContent editor={editor} />
       </div>
     </div>
